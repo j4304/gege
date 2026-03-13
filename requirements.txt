@@ -1,0 +1,16 @@
+pyyaml
+torch
+torchvision
+opencv-python
+numpy
+matplotlib
+scikit-learn
+kaggle
+kagglehub
+ipywidgets
+Pillow
+nvidia-ml-py
+ultralytics
+pynvml
+streamlit
+pandas
