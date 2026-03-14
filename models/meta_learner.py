@@ -15,7 +15,7 @@ class MetricGenerator(nn.Module):
     """
 
     # CHANGED: embedding_dim defaults to 1024 (size of absolute difference)
-    def __init__(self, embedding_dim=1024, hidden_dim=256, dropout=0.3):
+    def __init__(self, embedding_dim=1024, hidden_dim=256, dropout=0.5):
         """
         Initializes the Relation Network architecture.
 
@@ -29,8 +29,6 @@ class MetricGenerator(nn.Module):
         
         # Deep Relation Module (MLP)
         self.relation_module = nn.Sequential(
-            # Remove if pangit ni.
-            nn.BatchNorm1d(embedding_dim),
 
             # 1. Feature Interaction Layer
             nn.Linear(embedding_dim, hidden_dim),

@@ -17,38 +17,18 @@ def sample_augment_params():
     """
     Sample a single set of geometric augmentation parameters.
 
-    This is the core of the triplet-level augmentation contract:
-    by drawing params ONCE and sharing them across all three images in a
-    triplet (anchor, positive, negative), we guarantee that the model never
-    sees orientation-mismatched pairs during pretraining.
+    For independent augmentation, this should be called individually for the 
+    Anchor, Positive, and Negative images. This forces the model to learn 
+    spatial invariance and handle natural intra-class geometric variations.
 
-    Used exclusively by:
-        - preprocess_image(..., augment_params=params)  ← proposed pipeline
-    NOT used by:
-        - get_transforms(mode='train')                  ← baseline pipeline
-          (baseline calls preprocess_image with augment=True internally,
-           drawing fresh params per image — correct for single-image classification)
-
-    Returns:
-        dict with keys:
-            flip         (bool)  : whether to apply horizontal flip
-            angle        (float) : rotation in degrees, range [-20, 20]
-            scale        (float) : zoom factor, range [0.80, 1.20]
-            jitter_frac_y (float): canvas placement fraction along Y, range [0.0, 1.0]
-            jitter_frac_x (float): canvas placement fraction along X, range [0.0, 1.0]
-
-            jitter_frac_* are stored as fractions (not pixel offsets) so that the
-            same param set applied to images with different aspect ratios (and therefore
-            different slack budgets) produces proportionally equivalent placements.
-            At step 7: y_off = int(jitter_frac_y * y_slack), ensuring all images
-            in a triplet/episode share the same relative canvas position.
+    Bounds are kept tight to realistically simulate human handwriting variability:
+        - angle: [-15, 15] degrees (natural slant variation)
+        - scale: [0.85, 1.15] (natural size/pressure variation)
+        - jitter_frac: [0.0, 1.0] (canvas placement variation)
     """
     return {
-        'flip':          random.random() < 0.5,
-        'angle':         random.uniform(-20, 20),
-        'scale':         random.uniform(0.80, 1.20),
-        # Translation (tx, ty) removed to prevent stroke cutoff during affine warp.
-        # Safe translation is now handled entirely by jitter_frac in Step 7.
+        'angle':         random.uniform(-15, 15),
+        'scale':         random.uniform(0.85, 1.15),
         'jitter_frac_y': random.random(),
         'jitter_frac_x': random.random(),
     }
@@ -81,7 +61,7 @@ def preprocess_image(img, img_size=(224, 224), augment=False, augment_params=Non
     # Standard Otsu on a signature gives white background (255) and black strokes (0).
     _, img_binary = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # --- 4. Geometric Augmentation ---
+# --- 4. Geometric Augmentation ---
     params = None
     if augment_params is not None:
         params = augment_params
@@ -91,8 +71,7 @@ def preprocess_image(img, img_size=(224, 224), augment=False, augment_params=Non
     if params is not None:
         h, w = img_binary.shape
 
-        if params['flip']:
-            img_binary = cv2.flip(img_binary, 1)
+        # HORIZONTAL FLIPPING REMOVED to preserve stroke directionality
 
         center = (w // 2, h // 2)
         M = cv2.getRotationMatrix2D(center, params['angle'], params['scale'])
